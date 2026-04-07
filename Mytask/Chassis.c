@@ -10,6 +10,8 @@
 #include "My_list.h"
 #include "math.h"
 
+extern SemaphoreHandle_t remote_semaphore;
+
 //遥控器
 PackControl_t recv_pack;
 uint8_t recv_buff[20] = {0};
@@ -19,9 +21,9 @@ uint8_t usart5_buff[30];
 //电机驱动
 Motor_param motor1 = {
 .PID = {
-	.Kp = 0.6f,
-	.Ki = 0.001f,
-	.Kd = 15.0f,
+	.Kp = 0.0f,
+	.Ki = 0.0f,
+	.Kd = 0.0f,
 	.limit = 10000.0f,
 	.output_limit = 40.0f,
 },
@@ -32,9 +34,9 @@ Motor_param motor1 = {
 };
 Motor_param motor2 = {
 .PID = {
-	.Kp = 0.6f,
-	.Ki = 0.001f,
-	.Kd = 15.0f,
+	.Kp = 0.0f,
+	.Ki = 0.0f,
+	.Kd = 0.0f,
 	.limit = 10000.0f,
 	.output_limit = 40.0f,
 },
@@ -45,9 +47,9 @@ Motor_param motor2 = {
 };
 Motor_param motor3 = {
 .PID = {
-	.Kp = 0.6f,
-	.Ki = 0.001f,
-	.Kd = 15.0f,
+	.Kp = 0.0f,
+	.Ki = 0.0f,
+	.Kd = 0.0f,
 	.limit = 10000.0f,
 	.output_limit = 40.0f,
 },
@@ -58,9 +60,9 @@ Motor_param motor3 = {
 };
 Motor_param motor4 = {
 .PID = {
-	.Kp = 0.6f,
-	.Ki = 0.001f,
-	.Kd = 15.0f,
+	.Kp = 0.0f,
+	.Ki = 0.0f,
+	.Kd = 0.0f,
 	.limit = 10000.0f,
 	.output_limit = 40.0f,
 },
@@ -111,16 +113,36 @@ static void Key_Parse(uint32_t key, hw_key_t *out)
     out->Left_Broadside_Key  = (key & KEY_Left_Broadside_Key)  ? 1 : 0;
 }
 
+//void Remote_Analysis()
+//{
+//	/* 1. 保存上一帧 */
+//	Remote_Control.Second = Remote_Control.First;
+//	/* 2. 解析当前按键 */
+//	Key_Parse(recv_pack.Key, &Remote_Control.First);
+//	
+//	Remote_Control.Ex = recv_pack.rocker[1] / 1977.0f *MAX_ROBOT_VEL;
+//	Remote_Control.Ey = recv_pack.rocker[0] / 1798.0f *MAX_ROBOT_VEL;
+//	Remote_Control.Eomega = recv_pack.rocker[2] / 1847.0f * MAX_ROBOT_OMEGA;
+//}
+
 void Remote_Analysis()
 {
-	/* 1. 保存上一帧 */
-	Remote_Control.Second = Remote_Control.First;
-	/* 2. 解析当前按键 */
-	Key_Parse(recv_pack.Key, &Remote_Control.First);
-	
-	Remote_Control.Ex = recv_pack.rocker[1] / 1977.0f *MAX_ROBOT_VEL;
-	Remote_Control.Ey = recv_pack.rocker[0] / 1798.0f *MAX_ROBOT_VEL;
-	Remote_Control.Eomega = recv_pack.rocker[2] / 1847.0f * MAX_ROBOT_OMEGA;
+    if(xSemaphoreTake(remote_semaphore, pdMS_TO_TICKS(200)) == pdTRUE)
+    {
+      /* 1. 保存上一帧 */
+      Remote_Control.Second = Remote_Control.First;
+      /* 2. 解析当前按键 */
+      Key_Parse(recv_pack.Key, &Remote_Control.First);
+			Remote_Control.Ex = recv_pack.rocker[1] / 1977.0f *MAX_ROBOT_VEL;
+			Remote_Control.Ey = recv_pack.rocker[0] / 1798.0f *MAX_ROBOT_VEL;
+			Remote_Control.Eomega = recv_pack.rocker[2] / 1847.0f * MAX_ROBOT_OMEGA;
+    }else {
+	    Remote_Control.Ex = 0;
+      Remote_Control.Ey = 0;
+      Remote_Control.Eomega = 0;
+			
+      memset(&Remote_Control.First, 0, sizeof(Remote_Control.First));
+    }
 }
 
 //遥控器滤波降噪 
@@ -141,7 +163,12 @@ void MyRecvCallback(uint8_t *src, uint16_t size, void *user_data)
     memcpy(&recv_buff, src, size);
     memcpy(&recv_pack, recv_buff, sizeof(recv_pack));
     Rocker_Filter(&recv_pack);
+		//遥控器
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(remote_semaphore, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
+
 
 CommPackRecv_Cb recv_cb = MyRecvCallback;
 
@@ -159,18 +186,16 @@ void Remote(void *pvParameters)
 		if(MODE == REMOTE)
 		{			
 			Remote_Analysis();
-			v1 = -(sqrt(2.0f)/2.0)*(Vx + Vy + 2*LENGTH*Wz);
-			v2 = (sqrt(2.0f)/2.0)*(Vx - Vy - 2*LENGTH*Wz);
-			vTaskDelay(1);
-			v3 = -(sqrt(2.0f)/2.0)*(Vx + Vy - 2*LENGTH*Wz);
-			v4 = (sqrt(2.0f)/2.0)*(-Vx + Vy - 2*LENGTH*Wz);
+			v1 = -(sqrtf(2.0f)/2.0f)*(Vx + Vy + 2 * LENGTH * Wz);
+			v2 = (sqrtf(2.0f)/2.0f)*( Vx - Vy - 2 * LENGTH * Wz);
+			v3 = -(sqrtf(2.0f)/2.0f)*(Vx + Vy - 2 * LENGTH * Wz);
+			v4 = (sqrtf(2.0f)/2.0f)*(-Vx + Vy - 2 * LENGTH * Wz);
 			
 			wheel_one= ((v1 / (2.0f * PI * WHEEL_RADIUS)));
 			wheel_two= ((v2 / (2.0f * PI * WHEEL_RADIUS)));
 			wheel_three=-((v3 / (2.0f * PI * WHEEL_RADIUS)));
 			wheel_four = ((v4 / (2.0f * PI * WHEEL_RADIUS)));
 			
-			//PID_Control2((float)(motor1.steering.epm / 7.0f/(3.4f)), 0, &motor1.PID);
 			PID_Control2((float)(((float)motor1.steering.epm / 7.0f/(3.4f))), wheel_one, &motor1.PID);
       PID_Control2((float)(((float)motor2.steering.epm / 7.0f/(3.4f))), wheel_two, &motor2.PID);
 			PID_Control2((float)(((float)motor3.steering.epm / 7.0f/(3.4f))), wheel_three, &motor3.PID);
@@ -178,6 +203,7 @@ void Remote(void *pvParameters)
 			
       VESC_SetCurrent(&motor1.steering, motor1.PID.pid_out);
       VESC_SetCurrent(&motor2.steering, motor2.PID.pid_out);
+			vTaskDelay(1);
 	    VESC_SetCurrent(&motor3.steering, motor3.PID.pid_out);
 		  VESC_SetCurrent(&motor4.steering, motor4.PID.pid_out);
 		
@@ -197,6 +223,7 @@ void Remote(void *pvParameters)
 			wheel_one = 0;
 			wheel_two = 0;
 			wheel_three=0;
+			wheel_four =0;
 			
 			VESC_SetCurrent(&motor1.steering, 0);
 			VESC_SetCurrent(&motor2.steering, 0);
@@ -206,6 +233,19 @@ void Remote(void *pvParameters)
 		}
 		vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(2));
 	}
+}
+
+//遥控器任务
+TaskHandle_t Control_Remote_Handle;
+void Control_Remote(void *pvParameters)
+{
+	TickType_t last_wake_time = xTaskGetTickCount();
+
+	for(;;)
+	{
+		Remote_Analysis();
+		}
+		vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(2));
 }
 
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
