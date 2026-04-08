@@ -1,30 +1,38 @@
 #include "hit_ball.h"
 #include "go_motor.h"
 #include "485_bus.h"
+#include "motorEx.h"
 
 RS485_t rs485bus;
 
 Exp_param Exp_3508;
-Rm3508 rm3508 = {
-	.pos_pid_3508 = {
+Motor3508Ex_t Rm3508 = {
+	.pos_pid = {
 		.Kp = 0.0f,
 		.Ki = 0.0f,
 		.Kd = 0.0f,
-		.limit = 500.0f,
+		.limit = 50.0f,
 		.output_limit = 10000.0f
 			},
-	.vel_pid_3508 = {
+	.vel_pid = {
 		.Kp = 0.0f,
 		.Ki = 0.0f,
 		.Kd = 0.0f,
-		.limit = 500.0f,
+		.limit = 50.0f,
 		.output_limit = 10000.0f
 			}
 	};
 
-Unitreecontrol ball_Start = {
-	.Go_volleyball.motor_id = 0x01,
-	.Go_volleyball.rs485 = &rs485bus
+Unitreecontrol Unitree_param = {
+	.Volleyball_Go.motor_id = 0x01,
+	.Volleyball_Go.rs485 = &rs485bus,
+	.Exp = {
+		.exp_torque = 0.0f,
+    .exp_pos = 0.0f,
+    .exp_vel = 0.0f,
+    .exp_kp = 0.0f,
+    .exp_kd = 0.0f
+	}
 };
 	
 	uint32_t error_cnt = 0;
@@ -40,39 +48,48 @@ void Hit_Task(void *pvParameters)
 	TickType_t Last_wake_time = xTaskGetTickCount();
 	
 		//3508reset
-	  int16_t reset_command[4];
+	  int16_t Rm3508_reset[4];
 	  //3508send
-		int16_t can_send_buf[4];
+		int16_t Rm3508_send[4];
 
 		for(;;)
 		{
-			PID_Control2(rm3508.motor_3508.motor.MchanicalAngle, Exp_3508.exp_pos, &rm3508.pos_pid_3508);
-			PID_Control2(rm3508.motor_3508.motor.Speed, rm3508.pos_pid_3508.pid_out, &rm3508.vel_pid_3508);
+			uint16_t Reset_3508_pos = Rm3508.motor.MchanicalAngle;
+			float Reset_Unitree_pos = Unitree_param.Volleyball_Go.state.rad;
+			vTaskDelay(50);
 			
-			int16_t data = (int16_t)rm3508.vel_pid_3508.pid_out;
-			can_send_buf[0] = data;
+			PID_Control2(Rm3508.motor.MchanicalAngle, Exp_3508.exp_pos, &Rm3508.pos_pid);
+			PID_Control2(Rm3508.motor.Speed, Rm3508.pos_pid.pid_out, &Rm3508.vel_pid);
+			
+			int16_t rm3508_send = (int16_t)Rm3508.vel_pid.pid_out;
+			Rm3508_send[0] = rm3508_send;
 			//默认id为3508id为1
-			MotorSend(&hcan1, 0x200, can_send_buf);
-			vTaskDelay(350);
+			MotorSend(&hcan1, 0x200, Rm3508_send);
+			vTaskDelay(150);
 			//宇树
-			GoMotorSend(&ball_Start.Go_volleyball,
-			ball_Start.Exp.exp_torque,
-			ball_Start.Exp.exp_vel,
-			ball_Start.Exp.exp_pos,
-			ball_Start.Exp.exp_kp,
-			ball_Start.Exp.exp_kd);
+			GoMotorSend(&Unitree_param.Volleyball_Go,
+			Unitree_param.Exp.exp_torque,
+			Unitree_param.Exp.exp_vel,
+			Unitree_param.Exp.exp_pos,
+			Unitree_param.Exp.exp_kp,
+			Unitree_param.Exp.exp_kd);
 			
-			GoMotorRecv(&ball_Start.Go_volleyball);
-//			vTaskDelay(5000);
+			GoMotorRecv(&Unitree_param.Volleyball_Go);
+			vTaskDelay(100);
 			
-//			GoMotorSend();
-//			vTaskDelay(1000);
-      //3508复位
-//      int16_t rm3508_reset;
-//			
-//			reset_command[0] = rm3508_reset;
-//			
-//			MotorSend(&hcan1,0x200,reset_command);
+			GoMotorSend(&Unitree_param.Volleyball_Go,
+			Unitree_param.Exp.exp_torque,
+			Unitree_param.Exp.exp_vel,
+			Reset_Unitree_pos,
+			Unitree_param.Exp.exp_kp,
+			Unitree_param.Exp.exp_kd);
+			GoMotorRecv(&Unitree_param.Volleyball_Go);
+			
+			vTaskDelay(1000);
+			
+			Rm3508_reset[0] = (int16_t)Reset_3508_pos;
+			
+			MotorSend(&hcan1,0x200,Rm3508_reset);
 
 		vTaskDelayUntil(&Last_wake_time, pdMS_TO_TICKS(2));
 			}
@@ -81,6 +98,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     uint8_t buf[8];
     uint32_t ID = CAN_Receive_DataFrame(&hcan1, buf);
-    Motor3508Recv(&rm3508.motor_3508, &hcan1, ID, buf);
+    Motor3508Recv(&Rm3508, &hcan1, ID, buf);
 }
 
