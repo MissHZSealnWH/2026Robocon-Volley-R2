@@ -8,8 +8,8 @@
 
 #define PI 3.14159265359f
 #define MAX_ROBOT_VEL 4.0f	  // 底盘最大速度
-#define MAX_ROBOT_OMEGA PI*2	 	 //最大角速度
-#define LENGTH 0.45f	 	//整车边长的一半
+#define MAX_ROBOT_OMEGA PI	 	 //最大角速度
+#define R 0.457f	 	//整车半径
 #define WHEEL_RADIUS 0.075f  //轮的半径
 
 typedef enum {
@@ -36,7 +36,7 @@ typedef struct{
 extern TaskHandle_t Move_Remote_Handle;
 extern TaskHandle_t Remote_Handle;
 extern TaskHandle_t Control_Remote_Handle;
-
+extern TaskHandle_t Ball_back_Handle;
 //模式
 extern Positon_label MODE;
 
@@ -47,6 +47,7 @@ extern uint8_t position_dma_buff[50];
 void Remote(void *pvParameters);
 void Move_Remote(void *pvParameters);
 void Control_Remote(void *pvParameters);
+void Ball_back(void *pvParameters);
 
 uint8_t GetDriverID(uint16_t std_id);
 int32_t RAMP_slf( int32_t final, int32_t now, int32_t ramp );
