@@ -58,19 +58,7 @@ Motor_param motor3 = {
 	.hcan = &hcan2,
 }
 };
-Motor_param motor4 = {
-.PID = {
-	.Kp = 0.0f,
-	.Ki = 0.0f,
-	.Kd = 0.0f,
-	.limit = 10000.0f,
-	.output_limit = 40.0f,
-},
-.steering={
-	.motor_id=0x04,
-	.hcan = &hcan2,
-}
-};
+
 //遥控模式
 Positon_label MODE = REMOTE;
 
@@ -78,16 +66,13 @@ volatile float Vx =0;   //前后移动
 volatile float Vy =0;   //左右移动
 volatile float Wz =0;   //顺逆自转
 
-//该变量的值可能会被程序外的因素（如硬件、其他线程）修改
 volatile float v1 = 0.0f;
 volatile float v2 = 0.0f;
 volatile float v3 = 0.0f;
-volatile float v4 = 0.0f;
 
-volatile float wheel_one = 0.0f;  //前左
-volatile float wheel_two = 0.0f;  //前右
-volatile float wheel_three=0.0f;  //后右
-volatile float wheel_four =0.0f;  //后左
+volatile float wheel_one = 0.0f;
+volatile float wheel_two = 0.0f;
+volatile float wheel_three=0.0f;
 
 
 static void Key_Parse(uint32_t key, hw_key_t *out)
@@ -186,50 +171,42 @@ void Remote(void *pvParameters)
 		if(MODE == REMOTE)
 		{			
 			Remote_Analysis();
-			v1 = -(sqrtf(2.0f)/2.0f)*(Vx + Vy + 2 * LENGTH * Wz);
-			v2 = (sqrtf(2.0f)/2.0f)*( Vx - Vy - 2 * LENGTH * Wz);
-			v3 = -(sqrtf(2.0f)/2.0f)*(Vx + Vy - 2 * LENGTH * Wz);
-			v4 = (sqrtf(2.0f)/2.0f)*(-Vx + Vy - 2 * LENGTH * Wz);
+			v1 = -Vy*0.5f+Vx*(sqrtf(3.0f)/2.0f) + R * Wz;
+			v2 = -Vy*0.5f-Vx*(sqrtf(3.0f)/2.0f) + R * Wz;
+			v3 = Vy + R * Wz;			
 			
-			wheel_one= ((v1 / (2.0f * PI * WHEEL_RADIUS)));
-			wheel_two= ((v2 / (2.0f * PI * WHEEL_RADIUS)));
-			wheel_three=-((v3 / (2.0f * PI * WHEEL_RADIUS)));
-			wheel_four = ((v4 / (2.0f * PI * WHEEL_RADIUS)));
+			wheel_one=  -((v1 / (2.0f * PI * WHEEL_RADIUS)) * 60.0f);
+			wheel_two = (( v2 / (2.0f * PI * WHEEL_RADIUS)) * 60.0f);
+			wheel_three=-((v3 / (2.0f * PI * WHEEL_RADIUS)) * 60.0f);
 			
 			PID_Control2((float)(((float)motor1.steering.epm / 7.0f/(3.4f))), wheel_one, &motor1.PID);
       PID_Control2((float)(((float)motor2.steering.epm / 7.0f/(3.4f))), wheel_two, &motor2.PID);
 			PID_Control2((float)(((float)motor3.steering.epm / 7.0f/(3.4f))), wheel_three, &motor3.PID);
-			PID_Control2((float)(((float)motor4.steering.epm / 7.0f/(3.4f))), wheel_four, &motor3.PID);
 			
       VESC_SetCurrent(&motor1.steering, motor1.PID.pid_out);
       VESC_SetCurrent(&motor2.steering, motor2.PID.pid_out);
-			vTaskDelay(1);
-	    VESC_SetCurrent(&motor3.steering, motor3.PID.pid_out);
-		  VESC_SetCurrent(&motor4.steering, motor4.PID.pid_out);
-		
-			if(recv_pack.rocker[0] == 0 || recv_pack.rocker[1] == 0 ||recv_pack.rocker[2] == 0 )
+	    VESC_SetCurrent(&motor3.steering, motor3.PID.pid_out);  
+			
+		if(recv_pack.rocker[0] == 0 && recv_pack.rocker[1] == 0 && recv_pack.rocker[2] == 0 )
+//				if(abs(recv_pack.rocker[3]>1500))第二判断法
 			{
-        Remote_Control.Ex = 0;
-				Remote_Control.Ey = 0;
-				Remote_Control.Eomega = 0;
-
-				//按键状态清零
-				memset(&recv_pack.Key, 0, sizeof(uint32_t));
+	    Remote_Control.Ex = 0;
+      Remote_Control.Ey = 0;
+      Remote_Control.Eomega = 0;
+			
+      memset(&Remote_Control.First, 0, sizeof(Remote_Control.First));
+			
 		 	}
-  
 		}
 		if(MODE == STP || MODE == STOP )
 		{
 			wheel_one = 0;
 			wheel_two = 0;
 			wheel_three=0;
-			wheel_four =0;
 			
 			VESC_SetCurrent(&motor1.steering, 0);
 			VESC_SetCurrent(&motor2.steering, 0);
 			VESC_SetCurrent(&motor3.steering, 0);
-		  VESC_SetCurrent(&motor4.steering, 0);
-
 		}
 		vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(2));
 	}
@@ -239,13 +216,13 @@ void Remote(void *pvParameters)
 TaskHandle_t Control_Remote_Handle;
 void Control_Remote(void *pvParameters)
 {
-	TickType_t last_wake_time = xTaskGetTickCount();
+//	TickType_t last_wake_time = xTaskGetTickCount();
 
 	for(;;)
 	{
 		Remote_Analysis();
-		}
-		vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(2));
+	 }
+//		vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(2));
 }
 
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
@@ -255,7 +232,6 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	VESC_ReceiveHandler(&motor1.steering, &hcan2, ID, Recv);
 	VESC_ReceiveHandler(&motor2.steering, &hcan2, ID, Recv);
 	VESC_ReceiveHandler(&motor3.steering, &hcan2, ID, Recv);
-	VESC_ReceiveHandler(&motor4.steering, &hcan2, ID, Recv);
-
 }
+
 
