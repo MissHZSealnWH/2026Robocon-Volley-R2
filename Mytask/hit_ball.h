@@ -20,7 +20,7 @@ typedef struct
 typedef struct
 {
 	Exp_param Exp;
-	GO_MotorHandle_t Go_volleyball;//”Ó ˜
+	GO_MotorHandle_t Volleyball_Go;//”Ó ˜
 //	PID2 vel_pid;
 //	PID2 pos_pid;
 	//±∏”√
@@ -39,12 +39,6 @@ typedef struct {
 } ErrorStats_t;
 
 extern TaskHandle_t Hit_Task_Handle;
-
-typedef struct {
-    Motor3508Ex_t motor_3508;
-    PID2 pos_pid_3508;
-    PID2 vel_pid_3508;
-} Rm3508;
 
 void Hit_Task(void *pvParameters);
 

@@ -56,6 +56,7 @@ void Hit_Task(void *pvParameters)
 		{
 			uint16_t Reset_3508_pos = Rm3508.motor.MchanicalAngle;
 			float Reset_Unitree_pos = Unitree_param.Volleyball_Go.state.rad;
+			
 			vTaskDelay(50);
 			
 			PID_Control2(Rm3508.motor.MchanicalAngle, Exp_3508.exp_pos, &Rm3508.pos_pid);
@@ -75,7 +76,7 @@ void Hit_Task(void *pvParameters)
 			Unitree_param.Exp.exp_kd);
 			
 			GoMotorRecv(&Unitree_param.Volleyball_Go);
-			vTaskDelay(100);
+			vTaskDelay(200);
 			
 			GoMotorSend(&Unitree_param.Volleyball_Go,
 			Unitree_param.Exp.exp_torque,
@@ -94,10 +95,10 @@ void Hit_Task(void *pvParameters)
 		vTaskDelayUntil(&Last_wake_time, pdMS_TO_TICKS(2));
 			}
 }
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-    uint8_t buf[8];
-    uint32_t ID = CAN_Receive_DataFrame(&hcan1, buf);
-    Motor3508Recv(&Rm3508, &hcan1, ID, buf);
-}
+//void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+//{
+//    uint8_t buf[8];
+//    uint32_t ID = CAN_Receive_DataFrame(&hcan1, buf);
+//    Motor3508Recv(&Rm3508, &hcan1, ID, buf);
+//}
 
