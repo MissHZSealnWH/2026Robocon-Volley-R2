@@ -34,7 +34,7 @@ Unitreecontrol Unitree_param = {
     .exp_kd = 0.0f
 	}
 };
-	
+	uint8_t forward_trigger = 0;
 	uint32_t error_cnt = 0;
 	uint32_t last_error_time = 0;
 	ErrorStats_t error_stats = {0};
@@ -54,20 +54,31 @@ void Hit_Task(void *pvParameters)
 
 		for(;;)
 		{
+
 			uint16_t Reset_3508_pos = Rm3508.motor.MchanicalAngle;
 			float Reset_Unitree_pos = Unitree_param.Volleyball_Go.state.rad;
+				
+			if(forward_trigger == 0)
+			{
+			forward_trigger = 1;
+			}
 			
 			vTaskDelay(50);
 			
+			if(forward_trigger == 1)
+			{
 			PID_Control2(Rm3508.motor.MchanicalAngle, Exp_3508.exp_pos, &Rm3508.pos_pid);
 			PID_Control2(Rm3508.motor.Speed, Rm3508.pos_pid.pid_out, &Rm3508.vel_pid);
-			
 			int16_t rm3508_send = (int16_t)Rm3508.vel_pid.pid_out;
 			Rm3508_send[0] = rm3508_send;
 			//默认id为3508id为1
 			MotorSend(&hcan1, 0x200, Rm3508_send);
+			forward_trigger = 2;
+			}
 			vTaskDelay(150);
 			//宇树
+			if(forward_trigger == 2)
+			{
 			GoMotorSend(&Unitree_param.Volleyball_Go,
 			Unitree_param.Exp.exp_torque,
 			Unitree_param.Exp.exp_vel,
@@ -76,8 +87,12 @@ void Hit_Task(void *pvParameters)
 			Unitree_param.Exp.exp_kd);
 			
 			GoMotorRecv(&Unitree_param.Volleyball_Go);
+			forward_trigger = 3;
+			}
 			vTaskDelay(200);
 			
+			if(forward_trigger == 3)
+			{
 			GoMotorSend(&Unitree_param.Volleyball_Go,
 			Unitree_param.Exp.exp_torque,
 			Unitree_param.Exp.exp_vel,
@@ -85,13 +100,17 @@ void Hit_Task(void *pvParameters)
 			Unitree_param.Exp.exp_kp,
 			Unitree_param.Exp.exp_kd);
 			GoMotorRecv(&Unitree_param.Volleyball_Go);
-			
+			forward_trigger = 4;
+			}
 			vTaskDelay(1000);
 			
+			if(forward_trigger ==4)
+			{
 			Rm3508_reset[0] = (int16_t)Reset_3508_pos;
 			
 			MotorSend(&hcan1,0x200,Rm3508_reset);
-
+			forward_trigger = 0;
+			}
 		vTaskDelayUntil(&Last_wake_time, pdMS_TO_TICKS(2));
 			}
 }
