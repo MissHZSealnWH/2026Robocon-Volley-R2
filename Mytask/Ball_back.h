@@ -3,17 +3,23 @@
 
 #include "PID_old.h"
 
-
-
 typedef struct
 {
   float expect_torque;
 	float expect_angle;
 	float expect_omega;
-//motioncontrol再用
 	float kp;
 	float kd;
 }RobStride_Expect;
+
+typedef struct
+{
+  float reset_torque;
+	float reset_angle;
+	float reset_omega;
+	float kp;
+	float kd;
+}RobStride_Reset;
 
 
 //左电机
