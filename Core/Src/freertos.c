@@ -36,7 +36,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-SemaphoreHandle_t remote_semaphore;
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -89,7 +89,6 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
-	  remote_semaphore=xSemaphoreCreateBinary();
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
