@@ -1,12 +1,13 @@
 #include "hit_ball.h"
 #include "go_motor.h"
 #include "485_bus.h"
-#include "motorEx.h"
+#include "motorx.h"
 
+uint8_t start = 0;//发球标志
 RS485_t rs485bus;
 
 Exp_param Exp_3508;
-Motor3508Ex_t Rm3508 = {
+Rm3508_pid Rm3508_PID = {
 	.pos_pid = {
 		.Kp = 0.0f,
 		.Ki = 0.0f,
@@ -22,6 +23,8 @@ Motor3508Ex_t Rm3508 = {
 		.output_limit = 10000.0f
 			}
 	};
+
+RM3508_TypeDef Rm3508;
 
 Unitreecontrol Unitree_param = {
 	.Volleyball_Go.motor_id = 0x01,
@@ -54,22 +57,22 @@ void Hit_Task(void *pvParameters)
 
 		for(;;)
 		{
-
-			uint16_t Reset_3508_pos = Rm3508.motor.MchanicalAngle;
-			float Reset_Unitree_pos = Unitree_param.Volleyball_Go.state.rad;
-				
-			if(forward_trigger == 0)
+			uint16_t Reset_3508_pos;
+			float Reset_Unitree_pos;
+			if(forward_trigger == 0 && start == 1)
 			{
+			Reset_3508_pos = Rm3508.MchanicalAngle;
+			Reset_Unitree_pos = Unitree_param.Volleyball_Go.state.rad;
+				
 			forward_trigger = 1;
 			}
 			
 			vTaskDelay(50);
-			
 			if(forward_trigger == 1)
 			{
-			PID_Control2(Rm3508.motor.MchanicalAngle, Exp_3508.exp_pos, &Rm3508.pos_pid);
-			PID_Control2(Rm3508.motor.Speed, Rm3508.pos_pid.pid_out, &Rm3508.vel_pid);
-			int16_t rm3508_send = (int16_t)Rm3508.vel_pid.pid_out;
+			PID_Control2(Rm3508.MchanicalAngle, Exp_3508.exp_pos, &Rm3508_PID.pos_pid);
+			PID_Control2(Rm3508.Speed, Rm3508_PID.pos_pid.pid_out, &Rm3508_PID.vel_pid);
+			int16_t rm3508_send = (int16_t)Rm3508_PID.vel_pid.pid_out;
 			Rm3508_send[0] = rm3508_send;
 			//默认id为3508id为1
 			MotorSend(&hcan1, 0x200, Rm3508_send);
@@ -89,8 +92,8 @@ void Hit_Task(void *pvParameters)
 			GoMotorRecv(&Unitree_param.Volleyball_Go);
 			forward_trigger = 3;
 			}
-			vTaskDelay(200);
 			
+			vTaskDelay(200);
 			if(forward_trigger == 3)
 			{
 			GoMotorSend(&Unitree_param.Volleyball_Go,
@@ -99,11 +102,12 @@ void Hit_Task(void *pvParameters)
 			Reset_Unitree_pos,
 			Unitree_param.Exp.exp_kp,
 			Unitree_param.Exp.exp_kd);
+				
 			GoMotorRecv(&Unitree_param.Volleyball_Go);
 			forward_trigger = 4;
 			}
-			vTaskDelay(1000);
 			
+			vTaskDelay(500);
 			if(forward_trigger ==4)
 			{
 			Rm3508_reset[0] = (int16_t)Reset_3508_pos;
@@ -118,6 +122,6 @@ void Hit_Task(void *pvParameters)
 //{
 //    uint8_t buf[8];
 //    uint32_t ID = CAN_Receive_DataFrame(&hcan1, buf);
-//    Motor3508Recv(&Rm3508, &hcan1, ID, buf);
+//    RM3508_Receive(&Rm3508, buf);
 //}
 

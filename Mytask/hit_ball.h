@@ -26,6 +26,12 @@ typedef struct
 	//±∏”√
 }Unitreecontrol;
 
+typedef struct
+{
+	PID2 pos_pid;
+	PID2 vel_pid;
+}Rm3508_pid;
+
 typedef struct {
     uint32_t total;
     uint32_t overrun;
