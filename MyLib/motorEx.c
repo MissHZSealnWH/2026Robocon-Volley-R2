@@ -1,7 +1,7 @@
 #include "motorEx.h"
 
 
-uint32_t Motor3508Recv(Motor3508Ex_t* motor_ex,CAN_HandleTypeDef *hcan,uint32_t ID,uint8_t* buf)
+uint32_t Motor3508Recv(Motor3508Ex_t* motor_ex,FDCAN_HandleTypeDef *hcan,uint32_t ID,uint8_t* buf)
 {
     if(hcan->Instance==motor_ex->hcan->Instance&&ID==motor_ex->ID)
     {
@@ -17,7 +17,7 @@ uint32_t Motor3508Recv(Motor3508Ex_t* motor_ex,CAN_HandleTypeDef *hcan,uint32_t 
     return 0;
 }
 
-uint32_t Motor2006Recv(Motor2006Ex_t* motor_ex,CAN_HandleTypeDef *hcan,uint32_t ID,uint8_t* buf)
+uint32_t Motor2006Recv(Motor2006Ex_t* motor_ex,FDCAN_HandleTypeDef *hcan,uint32_t ID,uint8_t* buf)
 {
     if(hcan->Instance==motor_ex->hcan->Instance&&ID==motor_ex->ID)
     {

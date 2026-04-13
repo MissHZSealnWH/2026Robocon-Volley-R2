@@ -9,7 +9,7 @@
 #ifndef __VESC_H__
 #define __VESC_H__
 
-#include "stm32f4xx_hal.h"
+#include "stm32h7xx_hal.h"
 #include <stdint.h>
 
 typedef enum
@@ -46,7 +46,7 @@ typedef enum
 
 typedef struct
 {
-    CAN_HandleTypeDef *hcan;
+    FDCAN_HandleTypeDef *hfdcan;
     uint32_t motor_id;
 
     int32_t epm;
@@ -77,6 +77,6 @@ uint32_t VESC_SetRPM(VESC_t *vesc,int32_t rpm);
 uint32_t VESC_SetPosition(VESC_t *vesc,int32_t pos);
 
 
-uint32_t VESC_ReceiveHandler(VESC_t *vesc, CAN_HandleTypeDef *hcan, uint32_t ID, uint8_t *buf);
+uint32_t VESC_ReceiveHandler(VESC_t *vesc, FDCAN_HandleTypeDef *hfdcan, uint32_t ID, uint8_t *buf);
 
 #endif

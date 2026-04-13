@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include "stm32f4xx_hal.h"
+#include "stm32h7xx_hal.h"
 
 #define HOST_ID 0xFD
 
@@ -84,7 +84,7 @@ typedef struct
 typedef struct
 {
     //使用的CAN口
-    CAN_HandleTypeDef *hcan;
+    FDCAN_HandleTypeDef *hfdcan;
     uint32_t motor_id;              //电机8位ID
     uint32_t host_id;                //主机ID
 
@@ -95,7 +95,7 @@ typedef struct
 
 uint32_t RobStrideSend(RobStride_t *device,uint32_t ExtID,uint8_t* buf);
 
-void RobStrideInit(RobStride_t *device, CAN_HandleTypeDef *hcan, uint32_t id, RobStrideMode mode, RobStrideType type);
+void RobStrideInit(RobStride_t *device, FDCAN_HandleTypeDef *hfdcan, uint32_t id, RobStrideType type);
 uint32_t RobStrideSetMode(RobStride_t *device,RobStrideMode mode);
 uint32_t RobStrideEnable(RobStride_t *device);
 uint32_t RobStrideDisable(RobStride_t *device,uint8_t clear_error);
@@ -117,6 +117,6 @@ uint32_t RobStrideSetTorqueLimit(RobStride_t *device,float torque);
 
 //Base Function
 
-uint32_t RobStrideRecv_Handle(RobStride_t* device,CAN_HandleTypeDef *hcan,uint32_t ID,uint8_t* buf);
+uint32_t RobStrideRecv_Handle(RobStride_t* device,FDCAN_HandleTypeDef *hfdcan,uint32_t ID,uint8_t* buf);
 
 #endif

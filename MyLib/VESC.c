@@ -7,26 +7,30 @@
  * @return CAN数据发送情况
  * @note 无
  */
-uint32_t VESC_SetVoltage(VESC_t *vesc,float percentage)
+uint32_t VESC_SetVoltage(VESC_t *vesc, float percentage)
 {
-    CAN_TxHeaderTypeDef head;
     uint8_t buffer[4];
-    uint32_t mailbox;
-    uint32_t temp=(int32_t)(percentage*1000.0f);
+    int32_t temp = (int32_t)(percentage * 1000.0f);
 
-    head.RTR=CAN_RTR_DATA;
-    head.DLC=4;
-    head.StdId=0;
-    head.ExtId=(CAN_PACKET_SET_DUTY<<8)|vesc->motor_id;
-    head.IDE=CAN_ID_EXT;
-    head.TransmitGlobalTime=DISABLE;
+    buffer[0] = temp >> 24;
+    buffer[1] = temp >> 16;
+    buffer[2] = temp >> 8;
+    buffer[3] = temp;
 
-    buffer[0]=temp>>24;
-    buffer[1]=temp>>16;
-    buffer[2]=temp>>8;
-    buffer[3]=temp;
+    FDCAN_TxHeaderTypeDef head;
 
-    return HAL_CAN_AddTxMessage(vesc->hcan,&head,buffer,&mailbox);
+    head.Identifier = (CAN_PACKET_SET_DUTY << 8) | vesc->motor_id; // 扩展ID
+    head.IdType = FDCAN_EXTENDED_ID;        // 扩展帧
+    head.TxFrameType = FDCAN_DATA_FRAME;    // 数据帧
+    head.DataLength = FDCAN_DLC_BYTES_4;    // 4字节
+
+    head.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    head.BitRateSwitch = FDCAN_BRS_OFF;     // 经典CAN
+    head.FDFormat = FDCAN_CLASSIC_CAN;      // ?? 必须
+    head.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    head.MessageMarker = 0;
+
+    return HAL_FDCAN_AddMessageToTxFifoQ(vesc->hfdcan, &head, buffer);
 }
 
 
@@ -39,24 +43,30 @@ uint32_t VESC_SetVoltage(VESC_t *vesc,float percentage)
  */
 uint32_t VESC_SetCurrent(VESC_t *vesc,float ampere)
 {
-    CAN_TxHeaderTypeDef head;
+    FDCAN_TxHeaderTypeDef head;
     uint8_t buffer[4];
-    uint32_t mailbox;
-    uint32_t temp=(int32_t)(ampere*1000.0f);
+    int32_t temp = (int32_t)(ampere * 1000.0f);
 
-    head.RTR=CAN_RTR_DATA;
-    head.DLC=4;
-    head.StdId=0;
-    head.ExtId=(CAN_PACKET_SET_CURRENT<<8)|vesc->motor_id;
-    head.IDE=CAN_ID_EXT;
-    head.TransmitGlobalTime=DISABLE;
+    // ===== 原数据打包（不动）=====
+    buffer[0] = temp >> 24;
+    buffer[1] = temp >> 16;
+    buffer[2] = temp >> 8;
+    buffer[3] = temp;
 
-    buffer[0]=temp>>24;
-    buffer[1]=temp>>16;
-    buffer[2]=temp>>8;
-    buffer[3]=temp;
-    
-    return HAL_CAN_AddTxMessage(vesc->hcan,&head,buffer,&mailbox);
+    // ===== 只改这里（CAN头）=====
+    head.Identifier = (CAN_PACKET_SET_CURRENT << 8) | vesc->motor_id;
+    head.IdType = FDCAN_EXTENDED_ID;
+    head.TxFrameType = FDCAN_DATA_FRAME;
+    head.DataLength = FDCAN_DLC_BYTES_4;
+
+    head.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    head.BitRateSwitch = FDCAN_BRS_OFF;
+    head.FDFormat = FDCAN_CLASSIC_CAN;
+    head.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    head.MessageMarker = 0;
+
+    // ===== 只改发送函数 =====
+    return HAL_FDCAN_AddMessageToTxFifoQ(vesc->hfdcan, &head, buffer);
 }
 
 /**
@@ -68,24 +78,30 @@ uint32_t VESC_SetCurrent(VESC_t *vesc,float ampere)
  */
 uint32_t VESC_SetBreakCur(VESC_t *vesc,float ampere)
 {
-    CAN_TxHeaderTypeDef head;
+    FDCAN_TxHeaderTypeDef head;
     uint8_t buffer[4];
-    uint32_t mailbox;
-    uint32_t temp=(int32_t)(ampere*1000.0f);
+    int32_t temp = (int32_t)(ampere * 1000.0f);
 
-    head.RTR=CAN_RTR_DATA;
-    head.DLC=4;
-    head.StdId=0;
-    head.ExtId=(CAN_PACKET_SET_CURRENT_BRAKE<<8)|vesc->motor_id;
-    head.IDE=CAN_ID_EXT;
-    head.TransmitGlobalTime=DISABLE;
+    // 原数据打包（不动）
+    buffer[0] = temp >> 24;
+    buffer[1] = temp >> 16;
+    buffer[2] = temp >> 8;
+    buffer[3] = temp;
 
-    buffer[0]=temp>>24;
-    buffer[1]=temp>>16;
-    buffer[2]=temp>>8;
-    buffer[3]=temp;
-    
-    return HAL_CAN_AddTxMessage(vesc->hcan,&head,buffer,&mailbox);
+    // 只改CAN头
+    head.Identifier = (CAN_PACKET_SET_CURRENT_BRAKE << 8) | vesc->motor_id;
+    head.IdType = FDCAN_EXTENDED_ID;
+    head.TxFrameType = FDCAN_DATA_FRAME;
+    head.DataLength = FDCAN_DLC_BYTES_4;
+
+    head.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    head.BitRateSwitch = FDCAN_BRS_OFF;
+    head.FDFormat = FDCAN_CLASSIC_CAN;
+    head.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    head.MessageMarker = 0;
+
+    // 只改发送函数
+    return HAL_FDCAN_AddMessageToTxFifoQ(vesc->hfdcan, &head, buffer);
 }
 
 /**
@@ -95,20 +111,30 @@ uint32_t VESC_SetBreakCur(VESC_t *vesc,float ampere)
  * @return CAN数据发送情况
  * @note 无
  */
-uint32_t VESC_SetRPM(VESC_t *vesc,int32_t rpm)  //1000 ERPM（ERPM 表示电气转速，即 ERPM = RPM / 极数）
+uint32_t VESC_SetRPM(VESC_t *vesc,int32_t rpm)
 {
-    CAN_TxHeaderTypeDef head;
-    uint8_t buffer[4]={(rpm>>24)&0xFF,(rpm>>16)&0xFF,(rpm>>8)&0xFF,(rpm)&0xFF};
-    uint32_t mailbox;
+    FDCAN_TxHeaderTypeDef head;
+    uint8_t buffer[4] = {
+        (rpm >> 24) & 0xFF,
+        (rpm >> 16) & 0xFF,
+        (rpm >> 8)  & 0xFF,
+        (rpm)       & 0xFF
+    };
 
-    head.RTR=CAN_RTR_DATA;
-    head.DLC=4;
-    head.StdId=0;
-    head.ExtId=(CAN_PACKET_SET_RPM<<8)|vesc->motor_id;
-    head.IDE=CAN_ID_EXT;
-    head.TransmitGlobalTime=DISABLE;
-		
-    return HAL_CAN_AddTxMessage(vesc->hcan,&head,buffer,&mailbox);
+    // 只改CAN头
+    head.Identifier = (CAN_PACKET_SET_RPM << 8) | vesc->motor_id;
+    head.IdType = FDCAN_EXTENDED_ID;
+    head.TxFrameType = FDCAN_DATA_FRAME;
+    head.DataLength = FDCAN_DLC_BYTES_4;
+
+    head.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    head.BitRateSwitch = FDCAN_BRS_OFF;
+    head.FDFormat = FDCAN_CLASSIC_CAN;
+    head.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    head.MessageMarker = 0;
+
+    // 只改发送函数
+    return HAL_FDCAN_AddMessageToTxFifoQ(vesc->hfdcan, &head, buffer);
 }
 
 
@@ -121,18 +147,28 @@ uint32_t VESC_SetRPM(VESC_t *vesc,int32_t rpm)  //1000 ERPM（ERPM 表示电气转速，
  */
 uint32_t VESC_SetPosition(VESC_t *vesc,int32_t pos)
 {
-    CAN_TxHeaderTypeDef head;
-    uint8_t buffer[4]={(pos>>24)&0xFF,(pos>>16)&0xFF,(pos>>8)&0xFF,(pos)&0xFF};
-    uint32_t mailbox;
+    FDCAN_TxHeaderTypeDef head;
+    uint8_t buffer[4] = {
+        (pos >> 24) & 0xFF,
+        (pos >> 16) & 0xFF,
+        (pos >> 8)  & 0xFF,
+        (pos)       & 0xFF
+    };
 
-    head.RTR=CAN_RTR_DATA;
-    head.DLC=4;
-    head.StdId=0;
-    head.ExtId=(CAN_PACKET_SET_POS<<8)|vesc->motor_id;
-    head.IDE=CAN_ID_EXT;
-    head.TransmitGlobalTime=DISABLE;
-    
-    return HAL_CAN_AddTxMessage(vesc->hcan,&head,buffer,&mailbox);
+    // 只改CAN头
+    head.Identifier = (CAN_PACKET_SET_POS << 8) | vesc->motor_id;
+    head.IdType = FDCAN_EXTENDED_ID;
+    head.TxFrameType = FDCAN_DATA_FRAME;
+    head.DataLength = FDCAN_DLC_BYTES_4;
+
+    head.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    head.BitRateSwitch = FDCAN_BRS_OFF;
+    head.FDFormat = FDCAN_CLASSIC_CAN;
+    head.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    head.MessageMarker = 0;
+
+    // 只改发送函数
+    return HAL_FDCAN_AddMessageToTxFifoQ(vesc->hfdcan, &head, buffer);
 }
 
 
@@ -145,9 +181,9 @@ uint32_t VESC_SetPosition(VESC_t *vesc,int32_t pos)
  * @return CAN数据发送情况
  * @note 无
  */
-uint32_t VESC_ReceiveHandler(VESC_t *vesc,CAN_HandleTypeDef *hcan,uint32_t ID,uint8_t *buf)
+uint32_t VESC_ReceiveHandler(VESC_t *vesc,FDCAN_HandleTypeDef *hfdcan,uint32_t ID,uint8_t *buf)
 {
-    if(hcan->Instance!=vesc->hcan->Instance)    //来自正确的CAN外设
+    if(hfdcan->Instance!=vesc->hfdcan->Instance)    //来自正确的CAN外设
         return 0;
     else if((ID&0x000000FF)!=vesc->motor_id)      //来自正确的设备
         return 0;

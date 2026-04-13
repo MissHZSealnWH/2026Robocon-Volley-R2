@@ -11,9 +11,9 @@ static inline uint16_t float_to_uint16(float x, float x_min, float x_max)
     return (uint16_t)((offset * 65535.0f) / span);
 }
 
-void RobStrideInit(RobStride_t *device, CAN_HandleTypeDef *hcan, uint32_t id, RobStrideMode mode, RobStrideType type)
+void RobStrideInit(RobStride_t *device, FDCAN_HandleTypeDef *hfdcan, uint32_t id, RobStrideType type)
 {
-    device->hcan = hcan;
+    device->hfdcan = hfdcan;
     device->motor_id = id;
     device->host_id = HOST_ID;
     device->type = type;
@@ -213,9 +213,9 @@ uint32_t RobStrideSetTorqueLimit(RobStride_t *device, float torque)
     return RobStrideSend(device, (18 << 24) | (device->host_id << 8) | (device->motor_id), buf);
 }
 
-uint32_t RobStrideRecv_Handle(RobStride_t *device, CAN_HandleTypeDef *hcan, uint32_t ID, uint8_t *buf)
+uint32_t RobStrideRecv_Handle(RobStride_t *device, FDCAN_HandleTypeDef *hfdcan, uint32_t ID, uint8_t *buf)
 {
-    if (hcan->Instance != device->hcan->Instance)
+    if (hfdcan->Instance != device->hfdcan->Instance)
         return 0;
     if (((ID >> 8) & 0x00FF) != device->motor_id)
         return 0;
@@ -317,13 +317,19 @@ uint32_t RobStrideRecv_Handle(RobStride_t *device, CAN_HandleTypeDef *hcan, uint
 
 uint32_t RobStrideSend(RobStride_t *device, uint32_t ExtID, uint8_t *buf)
 {
-    CAN_TxHeaderTypeDef head;
-    uint32_t mailbox;
-    head.StdId = 0;
-    head.ExtId = ExtID;
-    head.IDE = CAN_ID_EXT;
-    head.RTR = CAN_RTR_DATA;
-    head.DLC = 8;
-    head.TransmitGlobalTime = DISABLE;
-    return HAL_CAN_AddTxMessage(device->hcan, &head, buf, &mailbox);
+    FDCAN_TxHeaderTypeDef head;
+
+    head.Identifier = ExtID;              // 直接用这个
+    head.IdType = FDCAN_EXTENDED_ID;      // 扩展帧
+    head.TxFrameType = FDCAN_DATA_FRAME;  // 数据帧
+    head.DataLength = FDCAN_DLC_BYTES_8;  // 8字节
+
+    head.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+    head.BitRateSwitch = FDCAN_BRS_OFF;   // 经典CAN
+    head.FDFormat = FDCAN_CLASSIC_CAN;    // ⚠️ 必须
+    head.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+    head.MessageMarker = 0;
+
+    return HAL_FDCAN_AddMessageToTxFifoQ(device->hfdcan, &head, buf);
 }
+
