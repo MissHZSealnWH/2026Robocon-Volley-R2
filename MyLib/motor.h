@@ -167,7 +167,7 @@ void GM3510_Receive(GM3510_TypeDef *Dst, uint8_t *Data);
  * @param[in] Data 电机控制信号数组指针
  * @return HAL Status structures definition
  */
-HAL_StatusTypeDef MotorSend(FDCAN_HandleTypeDef *hfdcan, uint32_t StdId, int16_t *Data);
+FDCAN_TxStatus MotorSend(FDCAN_HandleTypeDef *hfdcan, uint32_t StdId, int16_t *Data);
 
 /**
  * @brief 寻找最短到达路径

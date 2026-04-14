@@ -102,7 +102,7 @@ void M2006_Receive(M2006_TypeDef *Dst, uint8_t *Data) {
     Dst->LsatAngle = Dst->MchanicalAngle;
 }
 
-HAL_StatusTypeDef MotorSend(FDCAN_HandleTypeDef *hfdcan, uint32_t StdId, int16_t *Data) {
+FDCAN_TxStatus MotorSend(FDCAN_HandleTypeDef *hfdcan, uint32_t StdId, int16_t *Data) {
     uint8_t temp[8];
     temp[0] = (uint8_t)(Data[0] >> 8);
     temp[1] = (uint8_t)(Data[0] & 0xff);
