@@ -29,7 +29,7 @@ Motor_param motor1 = {
 },
 .steering={
 	.motor_id=0x01,
-	.hcan = &hcan2,
+	.hfdcan = &hfdcan1,
 }
 };
 Motor_param motor2 = {
@@ -42,7 +42,7 @@ Motor_param motor2 = {
 },
 .steering={
 	.motor_id=0x02,
-	.hcan = &hcan2,
+	.hfdcan = &hfdcan1,
 }
 };
 Motor_param motor3 = {
@@ -55,7 +55,7 @@ Motor_param motor3 = {
 },
 .steering={
 	.motor_id=0x03,
-	.hcan = &hcan2,
+	.hfdcan = &hfdcan1,
 }
 };
 
@@ -216,22 +216,21 @@ void Remote(void *pvParameters)
 TaskHandle_t Control_Remote_Handle;
 void Control_Remote(void *pvParameters)
 {
-//	TickType_t last_wake_time = xTaskGetTickCount();
-
 	for(;;)
 	{
 		Remote_Analysis();
 	 }
-//		vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(2));
 }
 
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
-	uint8_t Recv[8] = {0};
-	uint32_t ID = CAN_Receive_DataFrame(&hcan2, Recv);
-	VESC_ReceiveHandler(&motor1.steering, &hcan2, ID, Recv);
-	VESC_ReceiveHandler(&motor2.steering, &hcan2, ID, Recv);
-	VESC_ReceiveHandler(&motor3.steering, &hcan2, ID, Recv);
+	if(hfdcan->Instance==FDCAN1 && (RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0)
+	{
+	uint8_t Recv[8];
+	uint32_t ID;
+	FDCAN_Receive_DataFrame(&hfdcan1, &ID, Recv, NULL, NULL);
+	VESC_ReceiveHandler(&motor1.steering, &hfdcan1, ID, Recv);
+	VESC_ReceiveHandler(&motor2.steering, &hfdcan1, ID, Recv);
+	VESC_ReceiveHandler(&motor3.steering, &hfdcan1, ID, Recv);
+  }
 }
-
-
