@@ -7,7 +7,7 @@
 #include "task.h"
 #include "stdio.h"
 #include "queue.h"
-#include "CANDrive.h"
+#include "FDCANDriver.h"
 
 #include "usart.h"
 #include "bsp_dwt.h"
@@ -35,6 +35,10 @@ typedef struct{
 	uint8_t Right_Broadside_Key;
 } hw_key_t;
 
+#define FRAME_HEAD  0x5A
+#define FRAME_TAIL  0xA5
+#define ACTION_CMD  0x01
+
 typedef struct {
     float Ex;
     float Ey;
@@ -42,7 +46,12 @@ typedef struct {
     hw_key_t First,Second;
 } Remote_Handle_t;
 
-
+typedef struct
+{
+    uint8_t head;   // 0x5A
+    uint8_t cmd;    // 0x01
+    uint8_t tail;   // 0xA5
+} Frame_t;
 
 #define KEY_RISING_EDGE(cur, last, field)  ((cur.field == 1) && (last.field == 0))
 
@@ -51,7 +60,7 @@ extern Remote_Handle_t Remote_Control; //取出遥控器数据
 #define KEY_RISING_EDGE(cur, last, field)  ((cur.field == 1) && (last.field == 0))
 
 void Task_Init(void);
-
+void Parse_Frame(uint8_t *buf, uint16_t len);
 #endif
 
 
