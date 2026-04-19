@@ -7,7 +7,7 @@
 
 extern RS485_t rs485bus;
 extern uint8_t usart5_buff[30];
-uint8_t rx_buf[30];
+uint8_t uart7_rx_buf[3];
 extern SemaphoreHandle_t action_semaphore;
 
 void Task_Init(){
@@ -20,9 +20,8 @@ void Task_Init(){
    HAL_UARTEx_ReceiveToIdle_DMA(&huart5, usart5_buff, sizeof(usart5_buff));
    __HAL_DMA_DISABLE_IT(huart5.hdmarx, DMA_IT_HT);
 
-	
-	   HAL_UARTEx_ReceiveToIdle_DMA(&huart4, rx_buf, sizeof(rx_buf));
-   __HAL_DMA_DISABLE_IT(huart4.hdmarx, DMA_IT_HT);
+	 //H723接收F407
+   HAL_UART_Receive_DMA(&huart7, uart7_rx_buf, 3);
 	
 	vPortEnterCritical();
 	
@@ -58,22 +57,31 @@ void Task_Init(){
 	
 }
 
-void Parse_Frame(uint8_t *buf, uint16_t len)
+static void Parse_Frame(uint8_t *buf)
 {
-    if(len < 3) return;
-
-    for(uint16_t i = 0; i <= len - 3; i++)
+	uint8_t my_data;
+    // 解析接收到的3字节帧
+    if (buf[0] == FRAME_HEAD && buf[2] == FRAME_TAIL)
     {
-        if(buf[i]     == FRAME_HEAD &&
-           buf[i + 1] == ACTION_CMD &&
-           buf[i + 2] == FRAME_TAIL)
+        my_data = buf[1];
+        if (my_data == ACTION_CMD)
         {
-          BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-          xSemaphoreGiveFromISR(action_semaphore, &xHigherPriorityTaskWoken);
-          portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-					
-
-					break;
+					BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+					xSemaphoreGiveFromISR(action_semaphore, &xHigherPriorityTaskWoken);
+					portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
+        // 可以在这里添加其他命令处理
     }
+}
+void HAL_UART_RxCpltCallback (UART_HandleTypeDef *huart)
+{
+
+    if(huart->Instance == UART7)
+    {
+        Parse_Frame(uart7_rx_buf);
+			
+        // 重新启动DMA
+        HAL_UART_Receive_DMA(&huart7, uart7_rx_buf, 3);
+    }
+		
 }
