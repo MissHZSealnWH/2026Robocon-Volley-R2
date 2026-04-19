@@ -1,11 +1,12 @@
 #include "hit_ball.h"
 #include "go_motor.h"
 #include "485_bus.h"
-#include "motorx.h"
+#include "motor.h"
 
 uint8_t start = 0;//发球标志
 RS485_t rs485bus;
 
+extern SemaphoreHandle_t action_semaphore;
 Exp_param Exp_3508;
 Rm3508_pid Rm3508_PID = {
 	.pos_pid = {
@@ -59,6 +60,8 @@ void Hit_Task(void *pvParameters)
 		{
 			uint16_t Reset_3508_pos;
 			float Reset_Unitree_pos;
+		if(xSemaphoreTake(action_semaphore, portMAX_DELAY) == pdTRUE)
+		{
 			if(forward_trigger == 0 && start == 1)
 			{
 			Reset_3508_pos = Rm3508.MchanicalAngle;
@@ -75,7 +78,7 @@ void Hit_Task(void *pvParameters)
 			int16_t rm3508_send = (int16_t)Rm3508_PID.vel_pid.pid_out;
 			Rm3508_send[0] = rm3508_send;
 			//默认id为3508id为1
-			MotorSend(&hcan1, 0x200, Rm3508_send);
+			MotorSend(&hfdcan1, 0x200, Rm3508_send);
 			forward_trigger = 2;
 			}
 			vTaskDelay(150);
@@ -112,16 +115,11 @@ void Hit_Task(void *pvParameters)
 			{
 			Rm3508_reset[0] = (int16_t)Reset_3508_pos;
 			
-			MotorSend(&hcan1,0x200,Rm3508_reset);
+			MotorSend(&hfdcan1,0x200,Rm3508_reset);
 			forward_trigger = 0;
 			}
+		}
 		vTaskDelayUntil(&Last_wake_time, pdMS_TO_TICKS(2));
 			}
 }
-//void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-//{
-//    uint8_t buf[8];
-//    uint32_t ID = CAN_Receive_DataFrame(&hcan1, buf);
-//    RM3508_Receive(&Rm3508, buf);
-//}
 
