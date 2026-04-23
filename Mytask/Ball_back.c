@@ -26,14 +26,14 @@ RobStride_Expect R_right_expect = {
 RobStride_Reset R_left_reset = {
 	.reset_angle = 0.0f,
 	.reset_omega = 0.0f,
-	.reset_torque = 0.5f,
+	.reset_torque = 0.0f,
 	.kp = 10.0f,
 	.kd = 1.0f
 };
 RobStride_Reset R_right_reset = {
 	.reset_angle = 0.0f,
 	.reset_omega = 0.0f,
-	.reset_torque = -0.5f,
+	.reset_torque = 0.0f,
 	.kp = 10.0f,
 	.kd = 1.0f
 };
@@ -60,8 +60,8 @@ TaskHandle_t Ball_back_Handle;
 void Ball_back(void *pvParameters)
 {
 		vTaskDelay(3000);
-    RobStrideInit(&R_left, &hcan1, 0x01, RobStride_04);
-	  RobStrideInit(&R_right, &hcan1, 0x02, RobStride_04);
+    RobStrideInit(&R_left, &hfdcan2, 0x01, RobStride_04);
+	  RobStrideInit(&R_right, &hfdcan2, 0x02, RobStride_04);
 	  vTaskDelay(100);
 	  RobStrideSetMode(&R_left, RobStride_MotionControl);
 	  RobStrideSetMode(&R_right, RobStride_MotionControl);
@@ -165,15 +165,21 @@ void Ball_back(void *pvParameters)
 //			RobStrideMotionControl(&R_left, 0x01, 0, R_left_reset.reset_angle, 0, 0, 0);
 //			RobStrideMotionControl(&R_right, 0x02, 0, R_right_reset.reset_angle, 0, 0, 0);
 			}
+			vTaskDelay(300);
 			
 	 vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(2));
 	}
 }
 
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 {
-	uint8_t buf[8];
-	uint32_t ID = CAN_Receive_DataFrame(&hcan1, buf);
-	RobStrideRecv_Handle(&R_left, &hcan1, ID, buf);
-  RobStrideRecv_Handle(&R_right, &hcan1, ID, buf);
+	if(hfdcan->Instance==FDCAN2 && (RxFifo1ITs & FDCAN_IT_RX_FIFO1_NEW_MESSAGE) != 0)
+	{
+		uint8_t buf[8];
+		uint32_t ID;
+		FDCAN_Receive_DataFrame(&hfdcan2, &ID, buf, NULL, NULL);
+		RobStrideRecv_Handle(&R_left, &hfdcan2, ID, buf);
+		RobStrideRecv_Handle(&R_right, &hfdcan2, ID, buf);
+	}
 }
+

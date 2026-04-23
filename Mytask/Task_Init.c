@@ -23,35 +23,36 @@ void Task_Init(){
 	 //H723Ω” ’F407
    HAL_UART_Receive_DMA(&huart7, uart7_rx_buf, 3);
 	
+	
 	vPortEnterCritical();
 	
-//	xTaskCreate(Remote,
-//      	"Remote",
-//        400,
-//        NULL,
-//        3,
-//        &Remote_Handle); 
-//					
+	xTaskCreate(Remote,
+      	"Remote",
+        400,
+        NULL,
+        3,
+        &Remote_Handle); 
+					
 	xTaskCreate(Hit_Task,
 			 "Hit_Task",
 				400,
 				NULL,
 				3,
 				&Hit_Task_Handle); 
-//				
-//	xTaskCreate(Control_Remote,
-//			 "Control_Remote",
-//				312,
-//				NULL,
-//				3,
-//				&Control_Remote_Handle); 
+				
+	xTaskCreate(Control_Remote,
+			 "Control_Remote",
+				312,
+				NULL,
+				3,
+				&Control_Remote_Handle); 
 	
-//	xTaskCreate(Ball_back,
-//			 "Ball_back",
-//				400,
-//				NULL,
-//				3,
-//				&Ball_back_Handle); 
+	xTaskCreate(Ball_back,
+			 "Ball_back",
+				400,
+				NULL,
+				3,
+				&Ball_back_Handle); 
 					
 	vPortExitCritical();
 	

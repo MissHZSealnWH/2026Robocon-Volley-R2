@@ -58,8 +58,8 @@ void Hit_Task(void *pvParameters)
 
 		for(;;)
 		{
-			uint16_t Reset_3508_pos;
-			float Reset_Unitree_pos;
+		uint16_t Reset_3508_pos;
+		float Reset_Unitree_pos;
 		if(xSemaphoreTake(action_semaphore, portMAX_DELAY) == pdTRUE)
 		{
 			if(forward_trigger == 0 && start == 1)
